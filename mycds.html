@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إحصائيات الشحنات والتكاليف</title>
+    <!-- Chart.js للرسوم البيانية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #0f172a; /* لون أزرق غامق (بحر في الليل) */
+            --card-bg: #1e293b; /* أزرق ليلي هادئ للكروت */
+            --card-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card .title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-card .amount {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--text-main);
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        input, select, button {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #64748b;
+        }
+
+        button.btn-add {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button.btn-add:hover {
+            background: #2563eb;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-main);
+        }
+
+        th {
+            background: #0f172a;
+            color: var(--text-muted);
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 إحصائيات الشحنات والتكاليف</h1>
+
+    <!-- ملخص الإحصائيات -->
+    <div class="grid-stats">
+        <div class="stat-card">
+            <div class="title">عدد المنتجات الإجمالي</div>
+            <div class="amount" id="stat-count" style="color: #06b6d4;">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="title">قيم المنتجات فقط</div>
+            <div class="amount" id="stat-products" style="color: #60a5fa;">0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="title">إجمالي التوصيل</div>
+            <div class="amount" id="stat-shipping" style="color: #fb923c;">0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="title">إجمالي الجمارك</div>
+            <div class="amount" id="stat-customs" style="color: #c084fc;">0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="title">الإجمالي الكلي</div>
+            <div class="amount" id="stat-total" style="color: #4ade80;">0.00</div>
+        </div>
+    </div>
+
+    <!-- نموذج إضافة سجل جديد -->
+    <div class="card">
+        <h3>إضافة سجل جديد</h3>
+        <form id="expense-form">
+            <div class="form-group">
+                <select id="year" required></select>
+                <select id="month" required></select>
+                <input type="number" id="productCount" placeholder="عدد المنتجات" min="1" step="1" required>
+                <input type="number" id="productPrice" placeholder="سعر المنتجات" step="0.01" min="0" required>
+                <input type="number" id="shippingPrice" placeholder="سعر التوصيل" step="0.01" min="0" required>
+                <input type="number" id="customsPrice" placeholder="سعر الجمارك" step="0.01" min="0" required>
+            </div>
+            <button type="submit" class="btn-add" style="width: 100%;">حفظ السجل</button>
+        </form>
+    </div>
+
+    <!-- الرسوم البيانية -->
+    <div class="charts-container">
+        <div class="card">
+            <h3>توزيع التكاليف الشاملة</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+        <div class="card">
+            <h3>المصاريف حسب الفترات</h3>
+            <canvas id="barChart"></canvas>
+        </div>
+    </div>
+
+    <!-- جدول السجلات -->
+    <div class="card">
+        <h3>سجل المدخلات</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الفترة</th>
+                        <th>عدد المنتجات</th>
+                        <th>المنتجات</th>
+                        <th>التوصيل</th>
+                        <th>الجمارك</th>
+                        <th>المجموع</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const monthsNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    let entries = JSON.parse(localStorage.getItem('shipment_expenses')) || [];
+
+    let pieChart, barChart;
+
+    // إعداد القوائم المنسدلة
+    function setupDropdowns() {
+        const yearSelect = document.getElementById('year');
+        const monthSelect = document.getElementById('month');
+        const currentYear = new Date().getFullYear();
+
+        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            if (y === currentYear) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        monthsNames.forEach((m, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx + 1;
+            opt.textContent = m;
+            if (idx === new Date().getMonth()) opt.selected = true;
+            monthSelect.appendChild(opt);
+        });
+    }
+
+    // حفظ البيانات في LocalStorage
+    function saveData() {
+        localStorage.setItem('shipment_expenses', JSON.stringify(entries));
+        render();
+    }
+
+    // تحديث الواجهة والرسوم البيانية
+    function render() {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        let totalCount = 0, totalP = 0, totalS = 0, totalC = 0;
+
+        entries.forEach((item, index) => {
+            const count = item.count || 1;
+            totalCount += count;
+            totalP += item.product;
+            totalS += item.shipping;
+            totalC += item.customs;
+
+            const rowTotal = item.product + item.shipping + item.customs;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${monthsNames[item.month - 1]} ${item.year}</td>
+                <td>${count}</td>
+                <td>${item.product.toFixed(2)}</td>
+                <td>${item.shipping.toFixed(2)}</td>
+                <td>${item.customs.toFixed(2)}</td>
+                <td><strong>${rowTotal.toFixed(2)}</strong></td>
+                <td><button class="btn-delete" onclick="deleteEntry(${index})">حذف</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('stat-count').textContent = totalCount;
+        document.getElementById('stat-products').textContent = totalP.toFixed(2);
+        document.getElementById('stat-shipping').textContent = totalS.toFixed(2);
+        document.getElementById('stat-customs').textContent = totalC.toFixed(2);
+        document.getElementById('stat-total').textContent = (totalP + totalS + totalC).toFixed(2);
+
+        updateCharts(totalP, totalS, totalC);
+    }
+
+    function deleteEntry(index) {
+        entries.splice(index, 1);
+        saveData();
+    }
+
+    function updateCharts(p, s, c) {
+        // إعداد ألوان الرسم البياني لتلائم الوضع الداكن
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+
+        // Pie Chart
+        if (pieChart) pieChart.destroy();
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['المنتجات', 'التوصيل', 'الجمارك'],
+                datasets: [{
+                    data: [p, s, c],
+                    backgroundColor: ['#60a5fa', '#fb923c', '#c084fc']
+                }]
+            }
+        });
+
+        // Bar Chart
+        if (barChart) barChart.destroy();
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        const labels = entries.map(e => `${monthsNames[e.month - 1]} ${e.year}`);
+        
+        barChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'المنتجات', data: entries.map(e => e.product), backgroundColor: '#60a5fa' },
+                    { label: 'التوصيل', data: entries.map(e => e.shipping), backgroundColor: '#fb923c' },
+                    { label: 'الجمارك', data: entries.map(e => e.customs), backgroundColor: '#c084fc' }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { x: { stacked: true }, y: { stacked: true } }
+            }
+        });
+    }
+
+    // التعامل مع النموذج
+    document.getElementById('expense-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newEntry = {
+            year: parseInt(document.getElementById('year').value),
+            month: parseInt(document.getElementById('month').value),
+            count: parseInt(document.getElementById('productCount').value) || 1,
+            product: parseFloat(document.getElementById('productPrice').value) || 0,
+            shipping: parseFloat(document.getElementById('shippingPrice').value) || 0,
+            customs: parseFloat(document.getElementById('customsPrice').value) || 0
+        };
+
+        entries.push(newEntry);
+        saveData();
+
+        document.getElementById('productCount').value = '';
+        document.getElementById('productPrice').value = '';
+        document.getElementById('shippingPrice').value = '';
+        document.getElementById('customsPrice').value = '';
+    });
+
+    // التشغيل عند الفتح
+    setupDropdowns();
+    render();
+</script>
+</body>
+</html>
