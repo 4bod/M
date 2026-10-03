@@ -196,7 +196,7 @@
             <canvas id="pieChart"></canvas>
         </div>
         <div class="card">
-            <h3>المصاريف حسب الفترات</h3>
+            <h3>إجمالي المصاريف المجمعة لكل شهر</h3>
             <canvas id="barChart"></canvas>
         </div>
     </div>
@@ -320,19 +320,46 @@
             }
         });
 
-        // Bar Chart
+        // تجميع البيانات حسب الشهر والسنة للرسم البياني الشريطِي
+        const groupedData = {};
+
+        entries.forEach(item => {
+            const periodKey = `${item.year}-${String(item.month).padStart(2, '0')}`; // مفتاح للترتيب التاريخي
+            const labelName = `${monthsNames[item.month - 1]} ${item.year}`;
+
+            if (!groupedData[periodKey]) {
+                groupedData[periodKey] = {
+                    label: labelName,
+                    product: 0,
+                    shipping: 0,
+                    customs: 0
+                };
+            }
+
+            groupedData[periodKey].product += item.product;
+            groupedData[periodKey].shipping += item.shipping;
+            groupedData[periodKey].customs += item.customs;
+        });
+
+        // ترتيب الفترات زمنياً
+        const sortedKeys = Object.keys(groupedData).sort();
+        const labels = sortedKeys.map(k => groupedData[k].label);
+        const productData = sortedKeys.map(k => groupedData[k].product);
+        const shippingData = sortedKeys.map(k => groupedData[k].shipping);
+        const customsData = sortedKeys.map(k => groupedData[k].customs);
+
+        // Bar Chart (الشريط المدمج المجمع)
         if (barChart) barChart.destroy();
         const ctxBar = document.getElementById('barChart').getContext('2d');
-        const labels = entries.map(e => `${monthsNames[e.month - 1]} ${e.year}`);
         
         barChart = new Chart(ctxBar, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'المنتجات', data: entries.map(e => e.product), backgroundColor: '#60a5fa' },
-                    { label: 'التوصيل', data: entries.map(e => e.shipping), backgroundColor: '#fb923c' },
-                    { label: 'الجمارك', data: entries.map(e => e.customs), backgroundColor: '#c084fc' }
+                    { label: 'المنتجات', data: productData, backgroundColor: '#60a5fa' },
+                    { label: 'التوصيل', data: shippingData, backgroundColor: '#fb923c' },
+                    { label: 'الجمارك', data: customsData, backgroundColor: '#c084fc' }
                 ]
             },
             options: {
